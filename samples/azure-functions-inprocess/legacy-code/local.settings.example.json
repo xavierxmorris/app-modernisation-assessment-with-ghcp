@@ -1,0 +1,9 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "dotnet",
+    "ServiceBusConnection": "Endpoint=sb://contoso-orders.servicebus.windows.net/;SharedAccessKeyName=RootManageSharedAccessKey;SharedAccessKey=PLACEHOLDER_SAS_KEY",
+    "ConnectionStrings:OrderDB": "Server=tcp:contoso-sql.database.windows.net,1433;Database=ContosoOrders;User ID=appuser;Password=Pa$$w0rd_PLACEHOLDER;Encrypt=True;"
+  }
+}
