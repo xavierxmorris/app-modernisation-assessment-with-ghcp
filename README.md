@@ -191,41 +191,93 @@ a recommended fix for each.
 
 ## What's Included
 
+### 9 legacy archetypes — each with assessment input + worked report
+
+| # | Sample | Archetype | Quick verdict |
+|---|--------|-----------|--------------|
+| 1 | [`legacy-code/`](legacy-code/) ([report](example-outputs/appmod-assessment-report.md)) | ASP.NET 4.5 web order system | 🟠 Lift to Linux costs ~6 Mandatory items |
+| 2 | [`samples/wcf-billing-service/`](samples/wcf-billing-service/) | WCF SOAP service | 🔴 Linux = rewrite (CoreWCF or REST) |
+| 3 | [`samples/windows-service-fileprocessor/`](samples/windows-service-fileprocessor/) | Windows Service + MSMQ | 🟢 Clean lift to ACA Worker Service |
+| 4 | [`samples/webforms-employee-portal/`](samples/webforms-employee-portal/) | ASP.NET WebForms | 🔴 Cannot run on .NET 8+ — rewrite or stay on Windows |
+| 5 | [`samples/webapi2-owin-service/`](samples/webapi2-owin-service/) | WebAPI 2 + OWIN | 🟠 Mechanical rewrite to ASP.NET Core |
+| 6 | [`samples/console-msmq-worker/`](samples/console-msmq-worker/) | Console + MSMQ | 🟢 Easiest path — drop into ACA |
+| 7 | [`samples/class-library-old-deps/`](samples/class-library-old-deps/) | Class library with `packages.config` + AutoMapper 6 + log4net + Newtonsoft 9 | 🟠 Breaking-change release for consumers |
+| 8 | [`samples/azure-functions-inprocess/`](samples/azure-functions-inprocess/) | Azure Functions in-process v3 | 🟠 Dedicated **"Azure Functions upgrade"** scenario |
+| 9 | [`samples/wpf-desktop-app/`](samples/wpf-desktop-app/) | WPF desktop client | 🟢 WPF survives the .NET 8 jump |
+
+> ⚠️ **About the Dependabot alert on this repo:** Sample 7 deliberately
+> ships `Newtonsoft.Json 9.0.1` and `System.Net.Http 4.3.0` — both have
+> known CVEs. They're **assessment input only**, not deployed code. The
+> alert is the desired demonstration of what App Mod surfaces.
+
+### Repo-wide configuration
+
 | Path | Purpose |
 |------|---------|
 | [`appmod/README.md`](appmod/README.md) | Step-by-step App Mod assessment walkthrough (configure → run → interpret → compare → export/import) |
-| [`appmod/assessment-config.Any.json`](appmod/assessment-config.Any.json) | Target: `Any` — surface issues for every supported target so you can compare |
+| [`appmod/assessment-config.Any.json`](appmod/assessment-config.Any.json) | Target: `Any` |
 | [`appmod/assessment-config.AppService.Linux.json`](appmod/assessment-config.AppService.Linux.json) | Target: `AppService.Linux` |
-| [`appmod/assessment-config.ACA.json`](appmod/assessment-config.ACA.json) | Target: `ACA` (Azure Container Apps) |
-| [`appmod/assessment-config.AKS.Windows.json`](appmod/assessment-config.AKS.Windows.json) | Target: `AKS.Windows` (Azure Kubernetes Service) |
-| [`example-outputs/appmod-assessment-report.md`](example-outputs/appmod-assessment-report.md) | Worked example: Application Information + Issue Summary + per-issue detail + target comparison table |
-| [`prompts/analysis-prompts.md`](prompts/analysis-prompts.md) | Prompt catalog for the `@modernize-dotnet` agent (configure, run, drill, compare, map to predefined tasks, export/import) |
-| [`legacy-code/`](legacy-code/) | The .NET Framework 4.5 sample used as assessment input — 3 C# files + Web.config |
+| [`appmod/assessment-config.ACA.json`](appmod/assessment-config.ACA.json) | Target: `ACA` |
+| [`appmod/assessment-config.AKS.Windows.json`](appmod/assessment-config.AKS.Windows.json) | Target: `AKS.Windows` |
+
+### 6 cross-cutting guides
+
+| Guide | When to read it |
+|-------|-----------------|
+| [`guides/setup-for-success.md`](guides/setup-for-success.md) | **Before** the first assessment. Pre-flight checklist, target decision tree, branch strategy, team workflow. |
+| [`guides/common-issues.md`](guides/common-issues.md) | When the agent does something weird. 10 failure modes with symptom → cause → fix → prevention. |
+| [`guides/predefined-tasks-cheatsheet.md`](guides/predefined-tasks-cheatsheet.md) | Looking up which predefined task fixes a finding. Before/after code per task. |
+| [`guides/interpreting-the-dashboard.md`](guides/interpreting-the-dashboard.md) | First time looking at the assessment dashboard. |
+| [`guides/appcat-cli-integration.md`](guides/appcat-cli-integration.md) | Wiring the assessment into CI, or processing a monorepo of 30+ projects. |
+| [`guides/agent-feedback-loop.md`](guides/agent-feedback-loop.md) | When a predefined task breaks the build and you need to converge in 2–3 turns. |
+
+### Prompt catalog
+
+| Path | Purpose |
+|------|---------|
+| [`prompts/analysis-prompts.md`](prompts/analysis-prompts.md) | 7 sections: configure, run, drill, compare, export/import, reconcile, **pick the right sample**, **diagnose a failed assessment**, **run a predefined task safely**. |
 
 ---
 
-## Sample Findings (worked example)
+## Cross-Sample Comparison Matrix
 
-For the legacy code in [`legacy-code/`](legacy-code/), the App Mod assessment
-produces target-aware results — same code, very different stories:
+For each archetype, what each Azure target costs you. 🟢 lift-and-shift,
+🟠 modernize-and-run, 🔴 rewrite required, ❌ not supported.
 
-| Target | 🔴 Mandatory | 🟠 Potential | 🟡 Optional |
-|--------|:------------:|:------------:|:-----------:|
-| `AppService.Linux` | 6 | 2 | 4 |
-| `ACA` | 6 | 2 | 4 |
-| `AKS.Windows` | 2 | 4 | 6 |
+| # | Archetype | `AppService.Windows` | `AppService.Linux` | `ACA` | `AKS.Windows` | `AKS.Linux` | Recommended path |
+|---|-----------|:-------------------:|:------------------:|:-----:|:-------------:|:-----------:|------------------|
+| 1 | Web order system | 🟢 lift | 🟠 5 Mandatory | 🟠 5 Mandatory | 🟢 lift | 🟠 5 Mandatory | `AppService.Linux` after universal fixes |
+| 2 | WCF service | 🟢 lift (legacy) | 🔴 rewrite (CoreWCF or REST) | 🔴 rewrite | 🟢 lift (legacy) | 🔴 rewrite | `AKS.Windows` interim, then CoreWCF rewrite |
+| 3 | Windows Service + MSMQ | 🟢 lift | 🔴 ServiceBase + MSMQ | 🟢 ACA Worker + Service Bus | 🟢 lift | 🟢 ACA Worker + Service Bus | **`ACA`** with ServiceBusProcessor |
+| 4 | WebForms portal | 🟢 lift | ❌ not supported | ❌ not supported | 🟢 lift | ❌ not supported | `AppService.Windows` interim, plan Blazor rewrite |
+| 5 | WebAPI 2 + OWIN | 🟢 lift | 🔴 rewrite to ASP.NET Core | 🔴 rewrite | 🟢 lift | 🔴 rewrite | `AppService.Linux` after .NET upgrade scenario |
+| 6 | Console + MSMQ | 🟢 lift | 🟠 needs IHost wrapper | 🟢 ACA Worker + Service Bus | 🟢 lift | 🟢 ACA Worker + Service Bus | **`ACA`** — easiest of all archetypes |
+| 7 | Class library (old deps) | n/a (depends on consumer) | n/a | n/a | n/a | n/a | Manual + **"Newtonsoft.Json upgrade"** scenario |
+| 8 | Functions in-process | 🟠 isolated worker on Win | 🟢 isolated worker on Linux | n/a (Functions only) | n/a | n/a | `AppService.Linux` (Functions Premium) after **"Azure Functions upgrade"** |
+| 9 | WPF desktop | n/a (desktop) | n/a | n/a | n/a | n/a | .NET 8 Windows + Entra ID auth |
 
-Top blockers on the Linux targets:
+### How to read this matrix
 
-- 🔴 `System.Data.SqlClient` (no managed-identity support)
-- 🔴 `MerchantSecret` in `Web.config` (must move to Key Vault)
-- 🔴 `Integrated Security=True` SQL connection (won't reach Azure SQL from Linux)
-- 🔴 `System.Diagnostics.EventLog` (Windows-only API)
-- 🔴 .NET Framework 4.5 target (out of support)
-- 🔴 `SmtpClient` to internal SMTP host on port 25 (port 25 is blocked on Azure)
+- **🟢 lift** = the existing binary runs with config changes only.
+- **🟠 modernize-and-run** = mechanical changes (universal findings + small refactor); same architecture.
+- **🔴 rewrite** = different runtime, different framework — major rework.
+- **❌ not supported** = not a viable target at all.
 
-Full breakdown:
-[`example-outputs/appmod-assessment-report.md`](example-outputs/appmod-assessment-report.md).
+### Pick a sample by your scenario
+
+| Your situation | Read first |
+|----------------|-----------|
+| "We have a generic ASP.NET app and want to know what Azure costs" | [Sample 1](example-outputs/appmod-assessment-report.md) |
+| "We have a WCF service and the team is asking about CoreWCF vs gRPC" | [Sample 2](samples/wcf-billing-service/) |
+| "We have Windows Services and our customers asked us to leave Windows VMs" | [Sample 3](samples/windows-service-fileprocessor/) |
+| "We have WebForms and don't know if we should lift or rewrite" | [Sample 4](samples/webforms-employee-portal/) |
+| "We have WebAPI 2 services and want to ASP.NET Core them" | [Sample 5](samples/webapi2-owin-service/) |
+| "We have small console workers reading from MSMQ" | [Sample 6](samples/console-msmq-worker/) |
+| "We have a class library with old NuGet packages and consumers won't upgrade" | [Sample 7](samples/class-library-old-deps/) |
+| "We have Azure Functions on the in-process model and need to move to isolated worker" | [Sample 8](samples/azure-functions-inprocess/) |
+| "We have a WPF desktop app on .NET Framework 4.5" | [Sample 9](samples/wpf-desktop-app/) |
+| "I'm new to GHCP App Mod and want to set up properly" | [`guides/setup-for-success.md`](guides/setup-for-success.md) |
+| "The agent is misbehaving" | [`guides/common-issues.md`](guides/common-issues.md) |
 
 ---
 
