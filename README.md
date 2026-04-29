@@ -18,6 +18,86 @@ workflow on a realistic legacy ASP.NET order-processing system. It includes:
 
 ---
 
+## Most Common Findings (Across Every Enterprise Assessment)
+
+Regardless of archetype — WCF service, Windows Service, WebForms, WebAPI 2,
+Functions in-process, or "just" an ASP.NET app — these **six findings** appear
+in almost every real enterprise assessment. If you're new to GHCP App Mod,
+expect to see all six in your first run, and prioritize them in this order:
+
+| # | Finding | Why universal | Predefined task that fixes it |
+|---|---------|---------------|------------------------------|
+| 1 | **`System.Data.SqlClient`** in code, `providerName="System.Data.SqlClient"` in config | Every .NET Framework app touching SQL Server has this. Mandatory for managed-identity auth on Azure SQL. | **"Migrate to Managed Identity based Database on Azure"** |
+| 2 | **Plaintext secrets in `Web.config` / `App.config`** (`<add key="ApiSecret" value="..." />`, connection-string passwords) | Standard practice pre-2019. Mandatory for every Azure target. | **"Migrate to secured credentials by using Managed Identity and Azure Key Vault"** |
+| 3 | **`Integrated Security=True` SQL connection strings** | Domain-joined SQL is the enterprise default. Won't reach Azure SQL from Linux compute. | **"Migrate to Managed Identity based Database on Azure"** (same task as #1) |
+| 4 | **`System.Diagnostics.EventLog.WriteEntry(...)`** | Universal Windows logging pattern. Windows-only API; unavailable on `AppService.Linux`, `ACA`, `AKS.Linux`. | **"Migrate to OpenTelemetry on Azure"** |
+| 5 | **.NET Framework 4.5 / 4.6 / 4.7 target** in `<TargetFrameworkVersion>` | EOL or near-EOL. Required upgrade for any modern Azure compute. | Scenario — **".NET version upgrade"** (target .NET 8 or later) |
+| 6 | **`ConfigurationManager.AppSettings[...]` / `ConfigurationManager.ConnectionStrings[...]`** | Replaces by `IConfiguration` + `IOptions<T>` — needed for Key Vault and App Configuration integration. | Manual refactor; usually bundled into the **".NET version upgrade"** scenario |
+
+### Universal predefined-task ordering
+
+Run remediations in this order — each unblocks the next:
+
+```
+┌──────────────────────────────────────────┐
+│ 0.  Fix any SQL injection (live risk)    │
+└────────────────┬─────────────────────────┘
+                 ▼
+┌──────────────────────────────────────────┐
+│ 1.  Migrate secrets → Key Vault          │   ← #2 above
+└────────────────┬─────────────────────────┘
+                 ▼
+┌──────────────────────────────────────────┐
+│ 2.  SqlClient + connection → Managed ID  │   ← #1 + #3 above
+└────────────────┬─────────────────────────┘
+                 ▼
+┌──────────────────────────────────────────┐
+│ 3.  EventLog → OpenTelemetry             │   ← #4 above
+└────────────────┬─────────────────────────┘
+                 ▼
+┌──────────────────────────────────────────┐
+│ 4.  .NET version upgrade                 │   ← #5 + #6 above
+└────────────────┬─────────────────────────┘
+                 ▼
+┌──────────────────────────────────────────┐
+│ 5.  Archetype-specific work              │   ← see per-sample reports
+│     (WCF rewrite, MSMQ→Service Bus,      │
+│      WebForms→Blazor, etc.)              │
+└──────────────────────────────────────────┘
+```
+
+> 💡 **Why this order matters:** Running ".NET version upgrade" *first* is the
+> most common mistake — the build breaks because secrets, EventLog, and
+> SqlClient all need fixing before the new TFM compiles cleanly. Do them in
+> the order above and each step lands cleanly on `main`.
+
+### Where each common finding shows up in this repo
+
+| Finding | Demonstrated in |
+|---------|-----------------|
+| `System.Data.SqlClient` | Samples [1](example-outputs/appmod-assessment-report.md), [2](samples/wcf-billing-service/example-outputs/appmod-assessment-report.md), [4](samples/webforms-employee-portal/example-outputs/appmod-assessment-report.md) |
+| Plaintext secrets in config | Samples [1](example-outputs/appmod-assessment-report.md) (`MerchantSecret`), [2](samples/wcf-billing-service/example-outputs/appmod-assessment-report.md) (`BillingApiKey`) |
+| `Integrated Security=True` | Samples [1](example-outputs/appmod-assessment-report.md), [2](samples/wcf-billing-service/example-outputs/appmod-assessment-report.md), [4](samples/webforms-employee-portal/example-outputs/appmod-assessment-report.md) |
+| `System.Diagnostics.EventLog` | Samples [1](example-outputs/appmod-assessment-report.md), [2](samples/wcf-billing-service/example-outputs/appmod-assessment-report.md), [3](samples/windows-service-fileprocessor/example-outputs/appmod-assessment-report.md), [4](samples/webforms-employee-portal/example-outputs/appmod-assessment-report.md) |
+| .NET Framework 4.5 target | All samples |
+| `ConfigurationManager` | All samples |
+
+### Less universal but still very common
+
+These show up in 30–60% of real enterprise assessments and are covered by
+specific samples in this repo — see the [comparison matrix](#cross-sample-comparison) below:
+
+- **`System.ServiceModel` (WCF)** — see [Sample 2](samples/wcf-billing-service/)
+- **`System.Messaging` (MSMQ)** — see [Sample 3](samples/windows-service-fileprocessor/)
+- **`ServiceBase` Windows Service hosting** — see [Sample 3](samples/windows-service-fileprocessor/)
+- **ASP.NET WebForms** — see [Sample 4](samples/webforms-employee-portal/)
+- **`HttpWebRequest`** — see [Sample 1](example-outputs/appmod-assessment-report.md)
+- **`SmtpClient` to internal SMTP** — see [Sample 1](example-outputs/appmod-assessment-report.md), [Sample 2](samples/wcf-billing-service/)
+- **Forms authentication** — see [Sample 4](samples/webforms-employee-portal/)
+- **In-proc session state** — see [Sample 4](samples/webforms-employee-portal/)
+
+---
+
 ## Why This Exists
 
 Enterprise teams inherit legacy .NET codebases and need to answer one question
